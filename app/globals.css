@@ -519,6 +519,162 @@ input[type="range"]::-webkit-slider-thumb {
   white-space: nowrap;
 }
 
+.calculation {
+  padding: 82px clamp(24px, 6vw, 100px);
+  border-top: 1px solid var(--line);
+  background:
+    radial-gradient(circle at 84% 8%, rgba(39, 115, 159, 0.12), transparent 34rem),
+    #060b14;
+}
+
+.calculation-heading,
+.formula-flow,
+.model-note {
+  max-width: 1250px;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.calculation-heading {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  align-items: end;
+  gap: 30px;
+  margin-bottom: 42px;
+}
+
+.calculation-heading .kicker {
+  grid-column: 1 / -1;
+  margin-bottom: 0;
+}
+
+.calculation-heading h2 {
+  margin: 0;
+  font-size: clamp(30px, 3.2vw, 46px);
+  line-height: 1.25;
+  font-weight: 400;
+  letter-spacing: -0.035em;
+}
+
+.calculation-heading > p:last-child {
+  margin: 0;
+  color: #74859a;
+  font-size: 13px;
+  line-height: 1.9;
+  max-width: 540px;
+  justify-self: end;
+}
+
+.formula-flow {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  border-top: 1px solid var(--line);
+  border-left: 1px solid var(--line);
+}
+
+.formula-card {
+  padding: clamp(24px, 3vw, 38px);
+  min-height: 410px;
+  border-right: 1px solid var(--line);
+  border-bottom: 1px solid var(--line);
+  background: linear-gradient(145deg, rgba(12, 22, 37, 0.92), rgba(6, 11, 20, 0.76));
+}
+
+.formula-index {
+  color: #587187;
+  font: 600 10px ui-monospace, SFMono-Regular, Menlo, monospace;
+  letter-spacing: 0.14em;
+}
+
+.formula-card h3 {
+  margin: 18px 0 22px;
+  font-size: 18px;
+  font-weight: 500;
+}
+
+.formula {
+  min-height: 74px;
+  display: flex;
+  align-items: center;
+  padding: 17px 19px;
+  border: 1px solid rgba(117, 209, 247, 0.19);
+  border-left: 2px solid var(--cyan);
+  background: rgba(39, 107, 142, 0.08);
+  color: #c9ebf7;
+  font: 500 clamp(15px, 1.5vw, 20px)/1.55 ui-monospace, SFMono-Regular, Menlo, monospace;
+  letter-spacing: -0.02em;
+  overflow-x: auto;
+}
+
+.formula sub {
+  color: #84a9ba;
+  font-size: 0.62em;
+}
+
+.formula-card > p {
+  color: #78889c;
+  font-size: 12px;
+  line-height: 1.85;
+  margin: 20px 0;
+}
+
+.substitution {
+  display: grid;
+  gap: 8px;
+  padding-top: 18px;
+  border-top: 1px solid rgba(151, 176, 204, 0.1);
+}
+
+.substitution span {
+  color: #5f7186;
+  font-size: 10px;
+  letter-spacing: 0.08em;
+}
+
+.substitution code {
+  color: #93a4b8;
+  font: 500 11px/1.65 ui-monospace, SFMono-Regular, Menlo, monospace;
+  white-space: normal;
+}
+
+.substitution strong {
+  color: var(--gold);
+  font: 500 12px/1.65 ui-monospace, SFMono-Regular, Menlo, monospace;
+}
+
+.model-note {
+  display: grid;
+  grid-template-columns: 0.8fr 1.2fr;
+  gap: 50px;
+  padding: 30px 34px;
+  border: 1px solid var(--line);
+  border-top: 0;
+  background: rgba(10, 18, 30, 0.82);
+}
+
+.model-note div {
+  display: grid;
+  gap: 8px;
+}
+
+.model-note span {
+  color: var(--cyan);
+  font: 600 9px ui-monospace, SFMono-Regular, Menlo, monospace;
+  letter-spacing: 0.16em;
+}
+
+.model-note strong {
+  font-size: 15px;
+  font-weight: 500;
+}
+
+.model-note p {
+  margin: 0;
+  color: #728297;
+  font-size: 12px;
+  line-height: 1.85;
+}
+
 .explain {
   display: grid;
   grid-template-columns: 0.72fr 1.5fr;
@@ -593,6 +749,9 @@ footer a:hover { color: var(--cyan); }
   .timeline-section { grid-template-columns: 130px 42px 1fr; }
   .now-button { display: none; }
   .control-grid { grid-template-columns: repeat(2, 1fr); }
+  .calculation-heading { grid-template-columns: 1fr; }
+  .calculation-heading .kicker { grid-column: auto; }
+  .calculation-heading > p:last-child { justify-self: start; }
   .explain { grid-template-columns: 1fr; }
 }
 
@@ -634,6 +793,12 @@ footer a:hover { color: var(--cyan); }
   .preset-row { flex-wrap: wrap; }
   .preset-row .reroll { width: 100%; margin: 0; }
   .control-grid { grid-template-columns: 1fr; }
+  .calculation { padding: 60px 20px; }
+  .calculation-heading { gap: 20px; }
+  .formula-flow { grid-template-columns: 1fr; }
+  .formula-card { min-height: 0; padding: 26px 22px; }
+  .formula { font-size: 14px; }
+  .model-note { grid-template-columns: 1fr; gap: 18px; padding: 24px 22px; }
   .explain { padding: 60px 20px; gap: 36px; }
   .explain-cards { grid-template-columns: 1fr; }
   .explain-cards article { min-height: 0; }

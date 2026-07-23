@@ -29,6 +29,8 @@ test("renders the Fermi paradox laboratory", async () => {
   assert.match(html, /<title>寂静宇宙 · 费米悖论模拟器<\/title>/);
   assert.match(html, /宇宙这么大/);
   assert.match(html, /实验参数/);
+  assert.match(html, /这个宇宙，是怎么算出来的/);
+  assert.match(html, /MONTE CARLO/);
   assert.match(html, /NASA · 宇宙尺度/);
   assert.doesNotMatch(html, /codex-preview|react-loading-skeleton/);
 });

@@ -95,6 +95,13 @@ function formatCount(value: number, digits = 1) {
   return `${(value / 10 ** exp).toFixed(1)} × 10^${exp}`;
 }
 
+function formatProbability(value: number) {
+  const percent = value * 100;
+  if (percent >= 99.95) return "> 99.9%";
+  if (percent < 0.001) return "< 0.001%";
+  return `${percent.toFixed(percent < 1 ? 2 : 1)}%`;
+}
+
 function poissonish(mean: number, rand: () => number) {
   if (mean < 40) {
     let p = 1;
@@ -210,6 +217,30 @@ export default function Home() {
     [scale, params, seed],
   );
   const meta = scales[scale];
+  const calculation = useMemo(() => {
+    const habitableRate = 10 ** params.habitable;
+    const lifeRate = 10 ** params.life;
+    const intelligenceRate = 10 ** params.intelligence;
+    const lifetimeYears = 10 ** params.lifetime;
+    const habitableEraYears = 12.2e9;
+    const expectedActive =
+      model.expectedTotal * Math.min(1, lifetimeYears / habitableEraYears);
+    const atLeastOne = 1 - Math.exp(-Math.min(expectedActive, 750));
+    const sampleCount = Math.max(0, model.civs.length - 1);
+    const sampleWeight =
+      sampleCount > 0 ? Math.max(1, model.expectedTotal / sampleCount) : 0;
+    return {
+      habitableRate,
+      lifeRate,
+      intelligenceRate,
+      lifetimeYears,
+      expectedActive,
+      atLeastOne,
+      sampleCount,
+      sampleWeight,
+      expansionInMillionYears: params.expansion * 1_000_000,
+    };
+  }, [model, params]);
 
   const stats = useMemo(() => {
     const r = meta.diameter / 2;
@@ -604,6 +635,121 @@ export default function Home() {
             onChange={(v) => setParam("detect", v)}
           />
         </div>
+      </section>
+
+      <section className="calculation">
+        <div className="calculation-heading">
+          <p className="kicker"><span /> INSIDE THE MODEL</p>
+          <h2>这个宇宙，是怎么算出来的？</h2>
+          <p>
+            先估算“历史上会诞生多少文明”，再给每个文明抽取诞生时间、寿命和位置，
+            最后用光速限制判断它的信号此刻能否抵达地球。
+          </p>
+        </div>
+
+        <div className="formula-flow">
+          <article className="formula-card">
+            <div className="formula-index">01 / 诞生</div>
+            <h3>把三道未知门槛相乘</h3>
+            <div className="formula">
+              N<sub>born</sub> = N<sub>★</sub> × f<sub>hab</sub> ×
+              f<sub>life</sub> × f<sub>tech</sub>
+            </div>
+            <p>
+              恒星要依次跨过“有宜居世界、生命出现、发展出技术文明”三道门槛。
+              任何一项很小，最终结果都会急剧下降。
+            </p>
+            <div className="substitution">
+              <span>当前参数代入</span>
+              <code>
+                {formatCount(meta.stars, 0)} ×{" "}
+                {calculation.habitableRate.toExponential(1)} ×{" "}
+                {calculation.lifeRate.toExponential(1)} ×{" "}
+                {calculation.intelligenceRate.toExponential(1)}
+              </code>
+              <strong>≈ {formatCount(model.expectedTotal)} 个文明曾诞生</strong>
+            </div>
+          </article>
+
+          <article className="formula-card">
+            <div className="formula-index">02 / 同时存在</div>
+            <h3>文明寿命决定“时间重叠”</h3>
+            <div className="formula">
+              N<sub>active</sub> ≈ N<sub>born</sub> × L / T
+            </div>
+            <p>
+              如果文明随机散布在约 122 亿年的可居住时代中，它此刻仍活跃的机会，
+              粗略等于文明寿命 L 除以这段时间 T。
+            </p>
+            <div className="substitution">
+              <span>当前参数代入</span>
+              <code>
+                {formatCount(model.expectedTotal)} ×{" "}
+                {formatCount(calculation.lifetimeYears, 0)} / 1.22 × 10^10
+              </code>
+              <strong>
+                期望活跃 {formatCount(calculation.expectedActive)} 个 · 至少一个的概率{" "}
+                {formatProbability(calculation.atLeastOne)}
+              </strong>
+            </div>
+          </article>
+
+          <article className="formula-card">
+            <div className="formula-index">03 / 看得见</div>
+            <h3>信号必须落入我们的光锥</h3>
+            <div className="formula">
+              t<sub>on</sub> + d/c ≤ t<sub>now</sub> ≤ t<sub>off</sub> + d/c
+            </div>
+            <p>
+              距离 d 光年的信号需要 d 年才能抵达。发得太晚，信号还在路上；
+              停得太早，最后一束信号也可能已经掠过地球。
+            </p>
+            <div className="substitution">
+              <span>当前观测窗口</span>
+              <code>d ≤ {formatCount(params.detect, 0)} 光年</code>
+              <strong>
+                最远信号延迟 {formatCount(params.detect, 0)} 年 · 本轮抵达{" "}
+                {formatCount(stats.arrived)} 个
+              </strong>
+            </div>
+          </article>
+
+          <article className="formula-card">
+            <div className="formula-index">04 / 扩张与抽样</div>
+            <h3>用代表样本模拟真实量级</h3>
+            <div className="formula">
+              R = v × Δt &nbsp;&nbsp;·&nbsp;&nbsp; w = N<sub>born</sub> / n
+              <sub>sample</sub>
+            </div>
+            <p>
+              扩张半径受光速约束。文明过多时，程序最多绘制 900 个代表样本，
+              每个点携带权重 w；统计数字累加权重，而不是数屏幕上的点。
+            </p>
+            <div className="substitution">
+              <span>当前抽样</span>
+              <code>
+                n = {calculation.sampleCount} · w ≈{" "}
+                {formatCount(calculation.sampleWeight)}
+              </code>
+              <strong>
+                以当前速度扩张 100 万年，可达{" "}
+                {formatCount(calculation.expansionInMillionYears, 0)} 光年
+              </strong>
+            </div>
+          </article>
+        </div>
+
+        <aside className="model-note">
+          <div>
+            <span>MONTE CARLO</span>
+            <strong>公式给期望值，随机抽样给出“一次具体宇宙”。</strong>
+          </div>
+          <p>
+            每个文明的诞生时间、寿命和空间位置都由带种子的伪随机数生成。
+            所以相同参数也可能得到不同结局；“生成另一个宇宙”就是更换随机种子。
+            当期望数量很小时，实际抽到零个并不是计算错误，而是概率本身的含义。
+          </p>
+        </aside>
       </section>
 
       <section className="explain">
