@@ -346,6 +346,7 @@ main {
 }
 
 .outcome-grid strong.cyan { color: var(--cyan); }
+.outcome-grid strong.gold { color: var(--gold); }
 
 .outcome-note {
   color: #657487;
@@ -745,7 +746,7 @@ footer a:hover { color: var(--cyan); }
     padding: 24px 0 0;
   }
   .outcome h2 { min-height: 0; }
-  .outcome-grid { grid-template-columns: repeat(3, 1fr); }
+  .outcome-grid { grid-template-columns: repeat(4, 1fr); }
   .timeline-section { grid-template-columns: 130px 42px 1fr; }
   .now-button { display: none; }
   .control-grid { grid-template-columns: repeat(2, 1fr); }

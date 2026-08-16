@@ -1,98 +1,87 @@
-# vinext-starter
+# 寂静宇宙 · 费米悖论模拟器
 
-A clean full-stack starter running on
-[vinext](https://github.com/cloudflare/vinext), with optional Cloudflare D1 and
-Drizzle support.
+一个可交互的宇宙文明思想实验：让生命与技术文明在真实量级的空间和时间中诞生、扩张、熄灭，再观察它们是否有机会彼此发现。
 
-## Prerequisites
+**在线体验：** https://silent-cosmos-fermi-lab.pxf9h29y7y.chatgpt.site
 
-- Node.js `>=22.13.0`
+## 它想回答什么
 
-## Quick Start
+宇宙中即使曾经出现过其他文明，我们仍可能因为三种错位而听不见它们：
+
+- **空间错位**：文明之间的距离远超有效探测范围。
+- **时间错位**：文明各自存在，却没有活跃在同一个时间窗口。
+- **光锥错位**：信号还在路上，或者早已掠过地球。
+
+这个项目不提供费米悖论的确定答案，而是把尺度、概率与光速限制变成可以亲手调节和观察的模拟。
+
+## 核心功能
+
+- 银河系、本星系群、可观测宇宙三种空间尺度。
+- 138 亿年宇宙时间轴，可播放、暂停或拖动观察。
+- 六项可调参数：宜居世界概率、生命诞生概率、技术文明概率、文明平均寿命、星际扩张速度、有效探测半径。
+- “大寂静”“大过滤器”“拥挤宇宙”三组预设。
+- 随机生成不同宇宙，并显示曾经存在、当前活跃、信号抵达和扩张触达的文明数量。
+- 可视化信号视界与文明扩张波。
+- 随参数实时更新的计算说明与公式代入结果。
+
+## 模拟方法
+
+历史上诞生的技术文明期望数为：
+
+```text
+N_born = N_star × f_hab × f_life × f_tech
+```
+
+当前仍活跃的文明期望数近似为：
+
+```text
+N_active ≈ N_born × L / T
+```
+
+其中，`L` 是文明平均寿命，`T` 是可供文明出现的时间跨度。文明的信号还必须满足距离、发送时间、消亡时间和光速传播共同构成的观测窗口。
+
+文明扩张触达地球的时间为：
+
+```text
+t_arrive = t_expand + d / (βc)
+```
+
+其中，`β` 是扩张速度占光速的比例。扩张前沿必须在当前时刻之前到达，并且文明在抵达前仍未熄灭，才记为一次“扩张触达”。
+
+程序不会逐颗生成最高约 `10^24` 颗恒星，而是最多绘制 900 个蒙特卡洛代表样本，并为每个样本赋予统计权重。屏幕上的点是总体的代表，不等同于逐个真实文明。
+
+## 本地运行
+
+需要 Node.js `>=22.13.0`。
 
 ```bash
 npm install
 npm run dev
-npm run build
 ```
 
-This starter does not use `wrangler.jsonc`.
+验证构建和页面内容：
 
-## Included Shape
-
-- edit site code under `app/`
-- `.openai/hosting.json` declares optional Sites D1 and R2 bindings
-- `vite.config.ts` simulates declared bindings for local development
-- `db/schema.ts` starts intentionally empty
-- `examples/d1/` contains an optional D1 example surface
-- `drizzle.config.ts` supports local migration generation when needed
-
-## Workspace Auth Headers
-
-OpenAI workspace sites can read the current user's email from
-`oai-authenticated-user-email`.
-
-SIWC-authenticated workspace sites may also receive
-`oai-authenticated-user-full-name` when the user's SIWC profile has a non-empty
-`name` claim. The full-name value is percent-encoded UTF-8 and is accompanied by
-`oai-authenticated-user-full-name-encoding: percent-encoded-utf-8`.
-
-Treat the full name as optional and fall back to email when it is absent:
-
-```tsx
-import { headers } from "next/headers";
-
-export default async function Home() {
-  const requestHeaders = await headers();
-  const email = requestHeaders.get("oai-authenticated-user-email");
-  const encodedFullName = requestHeaders.get("oai-authenticated-user-full-name");
-  const fullName =
-    encodedFullName &&
-    requestHeaders.get("oai-authenticated-user-full-name-encoding") ===
-      "percent-encoded-utf-8"
-      ? decodeURIComponent(encodedFullName)
-      : null;
-
-  const displayName = fullName ?? email;
-  // ...
-}
+```bash
+npm test
 ```
 
-## Optional Dispatch-Owned ChatGPT Sign-In
+## 技术实现
 
-Import the ready-to-use helpers from `app/chatgpt-auth.ts` when the site needs
-optional or required ChatGPT sign-in:
+- Next.js 16、React 19、TypeScript
+- vinext、Vite、Cloudflare Workers 兼容构建
+- Canvas 文明分布与扩张动画
+- 基于种子的伪随机数与蒙特卡洛抽样
 
-- Use `getChatGPTUser()` for optional signed-in UI.
-- Use `requireChatGPTUser(returnTo)` for server-rendered pages that should send
-  anonymous visitors through Sign in with ChatGPT.
-- Use `chatGPTSignInPath(returnTo)` and `chatGPTSignOutPath(returnTo)` for
-  browser links or actions.
-- Pass a same-origin relative `returnTo` path for the destination after sign-in
-  or sign-out. The helper validates and safely encodes it.
-- Mark protected pages with `export const dynamic = "force-dynamic"` because
-  they depend on per-request identity headers.
+主要代码位于：
 
-Dispatch owns `/signin-with-chatgpt`, `/signout-with-chatgpt`, `/callback`, the
-OAuth cookies, and identity header injection. Do not implement app routes for
-those reserved paths. Routes that do not import and call the helper remain
-anonymous-compatible.
+- `app/page.tsx`：模拟模型、交互和页面内容
+- `app/globals.css`：视觉与响应式布局
+- `tests/rendered-html.test.mjs`：构建后的页面验证
+- `tests/simulation.test.mjs`：探测边界与扩张触达逻辑验证
 
-SIWC establishes identity only; it does not prove workspace membership. Use the
-Sites hosting platform's access policy controls for workspace-wide restrictions,
-or enforce explicit server-side membership or allowlist checks.
+## 边界说明
 
-Use SIWC for account pages, user-specific dashboards, saved records, and write
-actions tied to the current ChatGPT user. Leave public content anonymous.
-
-## Useful Commands
-
-- `npm run dev`: start local development
-- `npm run build`: verify the vinext build output
-- `npm test`: build the starter and verify its rendered loading skeleton
-- `npm run db:generate`: generate Drizzle migrations after schema changes
-
-## Learn More
-
-- [vinext Documentation](https://github.com/cloudflare/vinext)
-- [Drizzle D1 Guide](https://orm.drizzle.team/docs/get-started/d1-new)
+- 这是思想实验，不是地外生命概率预测器。
+- 宇宙年龄、空间尺度和恒星数量采用真实量级；生命概率、文明寿命与扩张行为仍是未知参数。
+- 期望值不等于实际观测值；每次随机抽样只代表一种可能的宇宙历史。
+- 页面为了可视化进行了二维投影和抽样简化。

@@ -1,6 +1,12 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import {
+  clampDetectionRadius,
+  distanceBetweenLy,
+  expansionReachesTarget,
+  maxDetectionRadius,
+} from "@/lib/simulation.mjs";
 
 type ScaleKey = "galaxy" | "local" | "universe";
 type Params = {
@@ -217,6 +223,10 @@ export default function Home() {
     [scale, params, seed],
   );
   const meta = scales[scale];
+  const detectionRadius = Math.min(
+    params.detect,
+    maxDetectionRadius(meta.diameter),
+  );
   const calculation = useMemo(() => {
     const habitableRate = 10 ** params.habitable;
     const lifeRate = 10 ** params.life;
@@ -247,19 +257,29 @@ export default function Home() {
     let active = 0;
     let extinct = 0;
     let arrived = 0;
+    let reached = 0;
     let expanding = 0;
+    const earth = model.civs[model.civs.length - 1];
 
     for (const c of model.civs) {
       if (c.id === 10_000) continue;
-      const distLy = Math.hypot(c.x, c.y, c.z) * r;
+      const distLy = distanceBetweenLy(c, earth, r);
       const lightTravelGyr = distLy / 1e9;
       const detectable =
-        distLy <= params.detect &&
+        distLy <= detectionRadius &&
         time >= c.expansionAt + lightTravelGyr &&
         time <= c.death + lightTravelGyr;
+      const expansionReached = expansionReachesTarget({
+        distanceLy: distLy,
+        expansionAtGyr: c.expansionAt,
+        deathGyr: c.death,
+        timeGyr: time,
+        speedFractionC: params.expansion,
+      });
       if (time >= c.born && time <= c.death) active += c.weight;
       if (time > c.death) extinct += c.weight;
       if (detectable) arrived += c.weight;
+      if (expansionReached) reached += c.weight;
       if (
         time >= c.expansionAt &&
         time <= c.death &&
@@ -267,8 +287,8 @@ export default function Home() {
       )
         expanding += c.weight;
     }
-    return { active, extinct, arrived, expanding };
-  }, [model, meta, params, time]);
+    return { active, extinct, arrived, reached, expanding };
+  }, [detectionRadius, model, meta, params.expansion, time]);
 
   useEffect(() => {
     if (!playing) return;
@@ -341,7 +361,7 @@ export default function Home() {
     const viewRadiusLy = meta.diameter / 2;
 
     if (showSignals) {
-      const detectR = Math.min(radius, (params.detect / viewRadiusLy) * radius);
+      const detectR = Math.min(radius, (detectionRadius / viewRadiusLy) * radius);
       ctx.beginPath();
       ctx.arc(ex, ey, Math.max(3, detectR), 0, Math.PI * 2);
       ctx.strokeStyle = "rgba(119, 211, 255, .42)";
@@ -402,7 +422,7 @@ export default function Home() {
     ctx.fillStyle = "#88cdea";
     ctx.font = "600 10px ui-monospace, SFMono-Regular, monospace";
     ctx.fillText("YOU ARE HERE", ex + 10, ey - 8);
-  }, [model, meta, params, scale, showExpansion, showSignals, time]);
+  }, [detectionRadius, model, meta, params.expansion, scale, showExpansion, showSignals, time]);
 
   useEffect(() => {
     draw();
@@ -415,7 +435,9 @@ export default function Home() {
     setParams((p) => ({ ...p, [key]: value }));
 
   const verdict =
-    stats.arrived >= 1
+    stats.reached >= 1
+      ? "他们的足迹已经抵达这里"
+      : stats.arrived >= 1
       ? "这一次，我们不再孤独"
       : stats.active >= 1
         ? "他们或许活着，只是太远"
@@ -436,7 +458,17 @@ export default function Home() {
             <button
               className={scale === key ? "active" : ""}
               key={key}
-              onClick={() => setScale(key)}
+              aria-pressed={scale === key}
+              onClick={() => {
+                setScale(key);
+                setParams((current) => ({
+                  ...current,
+                  detect: clampDetectionRadius(
+                    current.detect,
+                    scales[key].diameter,
+                  ),
+                }));
+              }}
             >
               {scales[key].name}
             </button>
@@ -484,12 +516,14 @@ export default function Home() {
           <div className="view-actions">
             <button
               className={showSignals ? "on" : ""}
+              aria-pressed={showSignals}
               onClick={() => setShowSignals((v) => !v)}
             >
               信号视界
             </button>
             <button
               className={showExpansion ? "on" : ""}
+              aria-pressed={showExpansion}
               onClick={() => setShowExpansion((v) => !v)}
             >
               扩张波
@@ -512,12 +546,18 @@ export default function Home() {
               </strong>
             </div>
             <div>
+              <span>扩张触达</span>
+              <strong className={stats.reached > 0 ? "gold" : ""}>
+                {formatCount(stats.reached)}
+              </strong>
+            </div>
+            <div>
               <span>曾经存在</span>
               <strong>{formatCount(stats.extinct + stats.active)}</strong>
             </div>
           </div>
           <p className="outcome-note">
-            “存在”不等于“同时存在”；“同时存在”也不等于信号已经越过距离抵达我们。
+            “存在”不等于“同时存在”；信号可以先于文明抵达，扩张则必须在文明熄灭前跨越距离。
           </p>
         </aside>
       </section>
@@ -627,11 +667,11 @@ export default function Home() {
           />
           <Slider
             label="我们的有效探测半径"
-            value={params.detect}
+            value={detectionRadius}
             min={10}
-            max={Math.min(meta.diameter / 2, 1_000_000)}
+            max={maxDetectionRadius(meta.diameter)}
             step={10}
-            display={`${formatCount(params.detect, 0)} 光年`}
+            display={`${formatCount(detectionRadius, 0)} 光年`}
             onChange={(v) => setParam("detect", v)}
           />
         </div>
@@ -706,24 +746,23 @@ export default function Home() {
             </p>
             <div className="substitution">
               <span>当前观测窗口</span>
-              <code>d ≤ {formatCount(params.detect, 0)} 光年</code>
+              <code>d ≤ {formatCount(detectionRadius, 0)} 光年</code>
               <strong>
-                最远信号延迟 {formatCount(params.detect, 0)} 年 · 本轮抵达{" "}
+                最远信号延迟 {formatCount(detectionRadius, 0)} 年 · 本轮抵达{" "}
                 {formatCount(stats.arrived)} 个
               </strong>
             </div>
           </article>
 
           <article className="formula-card">
-            <div className="formula-index">04 / 扩张与抽样</div>
-            <h3>用代表样本模拟真实量级</h3>
+            <div className="formula-index">04 / 扩张与触达</div>
+            <h3>扩张前沿也不能超过光速</h3>
             <div className="formula">
-              R = v × Δt &nbsp;&nbsp;·&nbsp;&nbsp; w = N<sub>born</sub> / n
-              <sub>sample</sub>
+              t<sub>arrive</sub> = t<sub>expand</sub> + d / (βc)
             </div>
             <p>
-              扩张半径受光速约束。文明过多时，程序最多绘制 900 个代表样本，
-              每个点携带权重 w；统计数字累加权重，而不是数屏幕上的点。
+              β 是光速的比例。只有扩张前沿在当前时刻之前抵达地球，且文明在抵达前
+              没有熄灭，才记为一次“扩张触达”。文明过多时仍以带权重的代表样本计算。
             </p>
             <div className="substitution">
               <span>当前抽样</span>
@@ -733,7 +772,8 @@ export default function Home() {
               </code>
               <strong>
                 以当前速度扩张 100 万年，可达{" "}
-                {formatCount(calculation.expansionInMillionYears, 0)} 光年
+                {formatCount(calculation.expansionInMillionYears, 0)} 光年 · 本轮触达{" "}
+                {formatCount(stats.reached)} 个
               </strong>
             </div>
           </article>
